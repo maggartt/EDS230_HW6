@@ -1,0 +1,102 @@
+---
+title: "EDS230_HW6_Sobol_ODE"
+author: "Trevor Maggart"
+date: "2023-05-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(here)
+library(sensitivity)
+library(deSolve)
+```
+
+```{r, forest growth function}
+forest_growth = function(time, C, params) {
+  ## Rate of growth depending on canopy closure threshold
+  dC = ifelse(C < params$canopy_closure, 
+              params$r * C, 
+              params$g * (1-(C/params$k)))
+ 
+  return(list(dC)) 
+}
+```
+
+
+```{r, initiate parameters & run ODE}
+# start with an initial forest size (C) of 10
+C_initial = 10
+
+# set our parameter values
+k = 250
+r = 0.01
+g = 2
+canopy_closure = 50
+
+# combine parameters into a dataframe using `cbind`
+params <- cbind.data.frame(k, r, g, canopy_closure)
+
+# create a sequence of years from 1-300
+sim_length = seq(from = 1, to = 300)
+
+# use our ODE solver from `deSolve` and save the result as a dataframe
+result <- ode(y = C_initial, times = sim_length, func = forest_growth, parms = params)
+# add column names
+colnames(result) <- c("time", "C")
+# save as dataframe
+result <- as.data.frame(result)
+```
+
+```{r, plot the ODE results}
+ggplot(result, aes(x = time, y = C)) + 
+  theme_minimal() +
+  geom_line(size = 0.8, color = "darkolivegreen") +
+  labs(x = "Years",
+       y = "Forest Size (kg C)") +
+  scale_x_continuous(limits = c(0, 300), breaks = seq(0, 300, by=50), expand = c(0,0)) +
+  scale_y_continuous(limits = c(0, 200), expand = c(0,0)) +
+  theme(
+    axis.title.x = element_text(size = 12, family = "Avenir", face = 'bold', vjust = -0.5),
+    axis.title.y = element_text(size = 12, family = "Avenir", face = 'bold', vjust = 2)
+  )
+```
+```{r}
+# create a standard deviation variable of 10% to be used with all parameters
+sd = 0.1
+
+# create a sample size of 1000
+n_sample = 1000
+
+# create two sample sets of parameter values
+## sample set 1
+r_sobol = rnorm(mean = r, sd = r*sd, n = n_sample)
+g_sobol = rnorm(mean = g, sd = g*sd, n = n_sample)
+k_sobol = rnorm(mean = k, sd = k*sd, n = n_sample)
+param_1 = cbind.data.frame(r = r_sobol, g = g_sobol, k = k_sobol)
+
+## sample set 2
+r_sobol = rnorm(mean = r, sd = r*sd, n = n_sample)
+g_sobol = rnorm(mean = g, sd = g*sd, n = n_sample)
+k_sobol = rnorm(mean = k, sd = k*sd, n = n_sample)
+param_2 = cbind.data.frame(r = r_sobol, g = g_sobol, k = k_sobol)
+
+# adjust the two parameter sets to remove negatives
+param_1 = param_1 %>% map_df(pmax, 0)
+param_2 = param_2 %>% map_df(pmax, 0)
+
+# get sobol object from parameter sets
+sens_c = sobolSalt(model = NULL, X1 = param_1, X2 = param_2, nboot = 300)
+
+# rename columns
+colnames(sens_c$X) = c("r", "g", "k")
+```
+```
+
+```{r}
+
+```
+
+
