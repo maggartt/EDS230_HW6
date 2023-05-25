@@ -5,7 +5,7 @@ description: |
 author: "Caroline Shepherd & Trevor Maggart"
 output:
   html_document:
-    code_folding: hide
+    code_folding: show
     theme: journal
     toc: yes
     toc_depth: 5
@@ -15,6 +15,14 @@ output:
 editor_options: 
   chunk_output_type: console
 ---
+
+This code uses the model below to visualize forest growth and analyze how different parameters impact forest growth.
+
+The model takes the following equations and parameters:
+
+- dC/dt = r ∗ C for forests where C is below a threshold canopy closure
+- dC/dt = g ∗ (1 − C/K) for forests where carbon is at or above the threshold canopy closure
+- K is carrying capacity in units of carbon
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.align='center')
@@ -28,7 +36,7 @@ library(kableExtra)
 
 ```{r, forest growth function}
 forest_growth = function(time, C, params) {
-  ## Rate of growth depending on canopy closure threshold
+ 
   if (C < params$canopy_closure) {
     dC = params$r * C
   } else {
@@ -156,9 +164,9 @@ ggplot(data = all_res_graph, aes(x = metric, y = value)) +
   )
 ```
 
-```{r}
+```{r, echo = FALSE}
 # sobol indices
-sens_forest = sensitivity::tell(sens_c, allres$max_c)
+sens_forest = sensitivity::tell(sens_c, all_res$max_c)
 
 # make a parameter column
 parameter <- c("r","g","k")
@@ -184,4 +192,6 @@ sens_S %>%
                 position = "left")
 ```
 
+Our first order sobol indices do not take covariance into account. Following this, we examined the total-effects indices, which DOES account for covariance. These results are helpful in explaining how our parameters interact and affect forest growth. In both cases, pre-canopy closure growth rate (r) and carrying capacity (K) have the biggest impact on forest growth, while post-canopy closure growth rate has a smaller impact on forest growth.
 
+It's important to understand these interactions when managing a forest, especially in the face of climate change. 
